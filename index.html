@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوت عبود - الصفحة الرئيسية</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--tg-theme-bg-color, #1a1a1a);
+            color: var(--tg-theme-text-color, #ffffff);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card {
+            background-color: var(--tg-theme-secondary-bg-color, #2a2a2a);
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+        .btn {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🤖 مرحباً بك في بوت عبود</h2>
+
+    <div class="card" id="user-info">
+        <h3>معلومات الحساب</h3>
+        <p>الاسم: <span id="username">جاري التحميل...</span></p>
+        <p>المعرف: <span id="userid">-</span></p>
+    </div>
+
+    <div class="card">
+        <h3>القلاع المرتبطة (IGGs)</h3>
+        <div id="castles-list">جاري جلب القلاع...</div>
+        <button class="btn" onclick="updateCastle()">تعديل قلعة</button>
+        <button class="btn" style="background-color: #555;" onclick="openSettings()">إعدادات اللغة</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // تركه فارغاً يجعل الواجهة تتصل تلقائياً بنفس رابط Vercel
+        const SERVER_URL = ""; 
+
+        async function initApp() {
+            const initData = tg.initData;
+
+            if (!initData) {
+                document.getElementById('username').innerText = "الرجاء فتح التطبيق من داخل تيليجرام";
+                return;
+            }
+
+            try {
+                const userRes = await fetch(`${SERVER_URL}/api/trpc/telegram.getUser`, {
+                    headers: { 'x-telegram-init-data': initData }
+                });
+                
+                if (!userRes.ok) throw new Error("فشل المصادقة UNAUTHORIZED");
+                
+                const userData = await userRes.json();
+                const u = userData[0]?.result?.data?.json?.user;
+                if (u) {
+                    document.getElementById('username').innerText = u.first_name || "مستخدم";
+                    document.getElementById('userid').innerText = u.id || "-";
+                }
+
+                const iggRes = await fetch(`${SERVER_URL}/api/trpc/telegram.getIggs`, {
+                    headers: { 'x-telegram-init-data': initData }
+                });
+                const iggData = await iggRes.json();
+                
+                const accounts = iggData[0]?.result?.data?.json?.accounts || [];
+                const castlesDiv = document.getElementById('castles-list');
+                
+                if (accounts.length > 0) {
+                    castlesDiv.innerHTML = accounts.map(a => `<p>🏰 حساب: <b>${a.igg_id}</b> (مستوى ${a.castle_level})</p>`).join('');
+                } else {
+                    castlesDiv.innerText = "لا توجد قلاع مسجلة.";
+                }
+
+            } catch (err) {
+                console.error("خطأ:", err);
+                document.getElementById('username').innerText = "خطأ في الاتصال أو المصادقة";
+            }
+        }
+
+        function updateCastle() {
+            tg.showAlert("تم النقر على تعديل قلعة بنجاح!");
+        }
+
+        function openSettings() {
+            tg.showAlert("فتح لوحة إعدادات اللغة.");
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
